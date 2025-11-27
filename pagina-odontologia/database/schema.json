@@ -1,0 +1,279 @@
+{
+  "patients": [
+    {
+      "id": "P001",
+      "name": "María González",
+      "birthDate": "1993-05-15",
+      "age": 32,
+      "phone": "+52 555-1234",
+      "email": "maria.gonzalez@email.com",
+      "address": "Calle Reforma 123, Col. Centro, CDMX",
+      "bloodType": "O+",
+      "occupation": "Ingeniera",
+      "insurance": "Seguro Popular",
+      "emergencyContact": {
+        "name": "Juan González",
+        "phone": "+52 555-1235",
+        "relationship": "Esposo"
+      },
+      "clinicalHistory": {
+        "allergies": [
+          "Penicilina",
+          "Polen"
+        ],
+        "chronicDiseases": [],
+        "currentMedications": [],
+        "previousSurgeries": [],
+        "familyHistory": "Madre con hipertensión",
+        "dentalHistory": "Ortodoncia en 2015",
+        "notes": "Paciente prefiere anestesia local"
+      },
+      "createdAt": "2025-01-15T10:30:00",
+      "lastVisit": "2025-11-20T14:00:00"
+    },
+    {
+      "id": "P002",
+      "name": "Carlos Ramírez",
+      "birthDate": "1980-08-22",
+      "age": 45,
+      "phone": "+52 555-5678",
+      "email": "carlos.ramirez@email.com",
+      "address": "Av. Insurgentes 456, Col. Roma, CDMX",
+      "bloodType": "A+",
+      "occupation": "Contador",
+      "insurance": "IMSS",
+      "emergencyContact": {
+        "name": "Laura Ramírez",
+        "phone": "+52 555-5679",
+        "relationship": "Esposa"
+      },
+      "clinicalHistory": {
+        "allergies": [],
+        "chronicDiseases": [
+          "Diabetes tipo 2",
+          "Hipertensión"
+        ],
+        "currentMedications": [
+          "Metformina 850mg",
+          "Losartán 50mg"
+        ],
+        "previousSurgeries": [
+          "Apendicectomía (2005)"
+        ],
+        "familyHistory": "Padre diabético, madre con problemas cardíacos",
+        "dentalHistory": "Extracción de muela del juicio en 2018",
+        "notes": "Revisar niveles de glucosa antes de procedimientos"
+      },
+      "createdAt": "2025-02-10T09:15:00",
+      "lastVisit": "2025-11-18T11:30:00"
+    },
+    {
+      "id": "P003",
+      "name": "Ana Martínez",
+      "birthDate": "1997-03-10",
+      "age": 28,
+      "phone": "+52 555-9012",
+      "email": "ana.martinez@email.com",
+      "address": "Calle Juárez 789, Col. Polanco, CDMX",
+      "bloodType": "B+",
+      "occupation": "Diseñadora Gráfica",
+      "insurance": "Seguro Privado",
+      "emergencyContact": {
+        "name": "Roberto Martínez",
+        "phone": "+52 555-9013",
+        "relationship": "Padre"
+      },
+      "clinicalHistory": {
+        "allergies": [],
+        "chronicDiseases": [],
+        "currentMedications": [],
+        "previousSurgeries": [],
+        "familyHistory": "Sin antecedentes relevantes",
+        "dentalHistory": "Blanqueamiento dental previo",
+        "notes": "Paciente muy puntual"
+      },
+      "createdAt": "2025-03-05T16:45:00",
+      "lastVisit": "2025-11-22T10:00:00"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "A001",
+      "patientId": "P001",
+      "patientName": "María González",
+      "date": "2025-11-27",
+      "time": "10:00",
+      "treatment": "Limpieza dental",
+      "status": "confirmed",
+      "notes": "Paciente prefiere anestesia local",
+      "createdAt": "2025-11-20T14:30:00"
+    },
+    {
+      "id": "A002",
+      "patientId": "P002",
+      "patientName": "Carlos Ramírez",
+      "date": "2025-11-27",
+      "time": "14:00",
+      "treatment": "Extracción de muela",
+      "status": "pending",
+      "notes": "Revisar niveles de glucosa antes del procedimiento",
+      "createdAt": "2025-11-18T12:00:00"
+    },
+    {
+      "id": "A003",
+      "patientId": "P003",
+      "patientName": "Ana Martínez",
+      "date": "2025-11-28",
+      "time": "09:00",
+      "treatment": "Blanqueamiento dental",
+      "status": "confirmed",
+      "notes": "Primera sesión de 3",
+      "createdAt": "2025-11-22T11:00:00"
+    },
+    {
+      "id": "A004",
+      "patientId": "P001",
+      "patientName": "María González",
+      "date": "2025-11-29",
+      "time": "15:00",
+      "treatment": "Revisión general",
+      "status": "pending",
+      "notes": "",
+      "createdAt": "2025-11-25T10:00:00"
+    }
+  ],
+  "inventory": [
+    {
+      "id": "I001",
+      "name": "Guantes de látex",
+      "category": "Protección",
+      "quantity": 500,
+      "minStock": 100,
+      "unit": "unidades",
+      "price": 0.50,
+      "supplier": "Dental Supply Co.",
+      "lastUpdated": "2025-11-20T08:00:00"
+    },
+    {
+      "id": "I002",
+      "name": "Anestesia local (Lidocaína)",
+      "category": "Medicamentos",
+      "quantity": 25,
+      "minStock": 20,
+      "unit": "ampolletas",
+      "price": 15.00,
+      "supplier": "Pharma Dental",
+      "lastUpdated": "2025-11-15T10:30:00"
+    },
+    {
+      "id": "I003",
+      "name": "Resina compuesta",
+      "category": "Materiales",
+      "quantity": 8,
+      "minStock": 10,
+      "unit": "jeringas",
+      "price": 45.00,
+      "supplier": "Dental Materials Inc.",
+      "lastUpdated": "2025-11-22T14:00:00"
+    },
+    {
+      "id": "I004",
+      "name": "Hilo dental",
+      "category": "Higiene",
+      "quantity": 150,
+      "minStock": 50,
+      "unit": "unidades",
+      "price": 2.50,
+      "supplier": "Oral Care Products",
+      "lastUpdated": "2025-11-18T09:00:00"
+    },
+    {
+      "id": "I005",
+      "name": "Mascarillas quirúrgicas",
+      "category": "Protección",
+      "quantity": 300,
+      "minStock": 100,
+      "unit": "unidades",
+      "price": 0.75,
+      "supplier": "Dental Supply Co.",
+      "lastUpdated": "2025-11-20T08:00:00"
+    },
+    {
+      "id": "I006",
+      "name": "Agujas dentales",
+      "category": "Instrumental",
+      "quantity": 45,
+      "minStock": 30,
+      "unit": "unidades",
+      "price": 3.00,
+      "supplier": "Dental Instruments Ltd.",
+      "lastUpdated": "2025-11-19T11:00:00"
+    },
+    {
+      "id": "I007",
+      "name": "Pasta profiláctica",
+      "category": "Materiales",
+      "quantity": 12,
+      "minStock": 15,
+      "unit": "frascos",
+      "price": 18.00,
+      "supplier": "Dental Materials Inc.",
+      "lastUpdated": "2025-11-21T13:00:00"
+    },
+    {
+      "id": "I008",
+      "name": "Algodón en rollos",
+      "category": "Consumibles",
+      "quantity": 200,
+      "minStock": 80,
+      "unit": "rollos",
+      "price": 1.20,
+      "supplier": "Oral Care Products",
+      "lastUpdated": "2025-11-17T10:00:00"
+    }
+  ],
+  "inventoryMovements": [
+    {
+      "id": "M001",
+      "inventoryId": "I002",
+      "type": "purchase",
+      "quantity": 10,
+      "previousStock": 15,
+      "newStock": 25,
+      "reason": "Reabastecimiento mensual",
+      "cost": 150.00,
+      "createdAt": "2025-11-15T10:30:00"
+    },
+    {
+      "id": "M002",
+      "inventoryId": "I003",
+      "type": "usage",
+      "quantity": -2,
+      "previousStock": 10,
+      "newStock": 8,
+      "reason": "Uso en tratamientos",
+      "cost": 0,
+      "createdAt": "2025-11-22T14:00:00"
+    },
+    {
+      "id": "M003",
+      "inventoryId": "I001",
+      "type": "purchase",
+      "quantity": 200,
+      "previousStock": 300,
+      "newStock": 500,
+      "reason": "Compra mayoreo",
+      "cost": 100.00,
+      "createdAt": "2025-11-20T08:00:00"
+    }
+  ],
+  "settings": {
+    "clinicName": "Clínica Dental Sonrisa Perfecta",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "appointmentDuration": 30,
+    "currency": "MXN"
+  }
+}

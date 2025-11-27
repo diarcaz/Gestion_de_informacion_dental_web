@@ -1,0 +1,397 @@
+// ============================================
+// INVENTORY MODULE - ENHANCED
+// ============================================
+
+import db from '../database/db.js';
+import modal from '../components/modal.js';
+import notify from '../components/notifications.js';
+
+class InventoryModule {
+  constructor() {
+    this.searchQuery = '';
+    this.filterCategory = 'all';
+  }
+
+  render() {
+    let inventory = this.searchQuery
+      ? db.searchInventory(this.searchQuery)
+      : db.getInventory();
+
+    if (this.filterCategory !== 'all') {
+      inventory = inventory.filter(item => item.category === this.filterCategory);
+    }
+
+    const categories = [...new Set(db.getInventory().map(item => item.category))];
+    const lowStockItems = db.getLowStockItems();
+
+    return `
+      <div class="page-header">
+        <h2>📦 Gestión de Inventario</h2>
+        <p>Administra los insumos y materiales del consultorio con control mensual</p>
+      </div>
+
+      ${lowStockItems.length > 0 ? `
+        <div class="card mb-3" style="border-left: 4px solid var(--warning); background: #FFF9E6;">
+          <div class="flex-between">
+            <div>
+              <strong style="color: var(--warning);">⚠️ Alerta de Stock Bajo</strong>
+              <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
+                Hay ${lowStockItems.length} producto(s) con stock bajo que requieren reabastecimiento
+              </p>
+            </div>
+            <button class="btn btn-warning btn-sm" onclick="inventoryModule.showLowStockItems()">
+              Ver Detalles
+            </button>
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="card mb-3">
+        <div class="flex-between mb-3" style="flex-wrap: wrap; gap: 1rem;">
+          <div class="search-bar" style="flex: 1; min-width: 250px;">
+            <span class="search-icon">🔍</span>
+            <input 
+              type="text" 
+              id="inventory-search-input"
+              class="search-input" 
+              placeholder="Buscar por nombre, categoría o proveedor..."
+              value="${this.searchQuery}"
+            >
+          </div>
+          
+          <select id="inventory-category-filter" class="form-select" style="max-width: 200px;">
+            <option value="all">Todas las categorías</option>
+            ${categories.map(cat => `
+              <option value="${cat}" ${this.filterCategory === cat ? 'selected' : ''}>${cat}</option>
+            `).join('')}
+          </select>
+
+          <button class="btn btn-primary" onclick="inventoryModule.showAddForm()">
+            ➕ Nuevo Producto
+          </button>
+        </div>
+
+        <div id="inventory-table-container">
+          ${inventory.length === 0 ? this.renderEmptyState() : this.renderTable(inventory)}
+        </div>
+      <div style="max-height: 400px; overflow-y: auto;">
+        ${lowStockItems.map(item => `
+          <div class="card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid var(--warning);">
+            <div class="flex-between">
+              <div>
+                <strong style="color: var(--primary-blue);">${item.name}</strong><br>
+                <small style="color: var(--text-secondary);">
+                  Categoría: ${item.category} | Proveedor: ${item.supplier}
+                </small>
+              </div>
+              <div style="text-align: right;">
+                <strong style="color: var(--warning); font-size: 1.2rem;">
+                  ${item.quantity} ${item.unit}
+                </strong><br>
+                <small style="color: var(--text-secondary);">
+                  Mínimo: ${item.minStock} ${item.unit}
+                </small>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    modal.create('⚠️ Productos con Stock Bajo', content, [
+      { text: 'Cerrar', class: 'btn-secondary' }
+    ]);
+  }
+
+  showAddForm() {
+    const categories = [...new Set(db.getInventory().map(item => item.category))];
+
+    modal.form('Nuevo Producto', [
+      { name: 'name', label: 'Nombre del Producto', type: 'text', required: true, placeholder: 'Ej: Guantes de látex' },
+      {
+        name: 'category',
+        label: 'Categoría',
+        type: 'select',
+        required: true,
+        options: [
+          ...categories.map(cat => ({ value: cat, label: cat })),
+          { value: 'nueva', label: '+ Nueva Categoría' }
+        ]
+      },
+      { name: 'quantity', label: 'Cantidad', type: 'number', required: true, min: 0 },
+      { name: 'minStock', label: 'Stock Mínimo', type: 'number', required: true, min: 0 },
+      { name: 'unit', label: 'Unidad de Medida', type: 'text', required: true, placeholder: 'Ej: unidades, cajas, litros' },
+      { name: 'price', label: 'Precio Unitario', type: 'number', required: true, min: 0, placeholder: '0.00' },
+      { name: 'supplier', label: 'Proveedor', type: 'text', required: true, placeholder: 'Nombre del proveedor' }
+    ], (data) => {
+      let category = data.category;
+
+      // If "nueva" category selected, prompt for new category name
+      if (category === 'nueva') {
+        const newCategory = prompt('Ingresa el nombre de la nueva categoría:');
+        if (!newCategory) return;
+        category = newCategory;
+      }
+
+      const item = db.addInventoryItem({
+        name: data.name,
+        category: category,
+        quantity: parseInt(data.quantity),
+        minStock: parseInt(data.minStock),
+        unit: data.unit,
+        price: parseFloat(data.price),
+        supplier: data.supplier
+      });
+
+      notify.success(`Producto ${item.name} agregado exitosamente`);
+      window.app.renderCurrentModule();
+    });
+  }
+
+  showEditForm(id) {
+    const item = db.getInventoryById(id);
+    if (!item) return;
+
+    const categories = [...new Set(db.getInventory().map(item => item.category))];
+
+    modal.form('Editar Producto', [
+      { name: 'name', label: 'Nombre del Producto', type: 'text', required: true, value: item.name },
+      {
+        name: 'category',
+        label: 'Categoría',
+        type: 'select',
+        required: true,
+        value: item.category,
+        options: categories.map(cat => ({ value: cat, label: cat }))
+      },
+      { name: 'quantity', label: 'Cantidad', type: 'number', required: true, value: item.quantity, min: 0 },
+      { name: 'minStock', label: 'Stock Mínimo', type: 'number', required: true, value: item.minStock, min: 0 },
+      { name: 'unit', label: 'Unidad de Medida', type: 'text', required: true, value: item.unit },
+      { name: 'price', label: 'Precio Unitario', type: 'number', required: true, value: item.price, min: 0 },
+      { name: 'supplier', label: 'Proveedor', type: 'text', required: true, value: item.supplier }
+    ], (data) => {
+      db.updateInventoryItem(id, {
+        name: data.name,
+        category: data.category,
+        quantity: parseInt(data.quantity),
+        minStock: parseInt(data.minStock),
+        unit: data.unit,
+        price: parseFloat(data.price),
+        supplier: data.supplier
+      });
+
+      notify.success('Producto actualizado exitosamente');
+      window.app.renderCurrentModule();
+    });
+  }
+
+  deleteItem(id) {
+    const item = db.getInventoryById(id);
+    if (!item) return;
+
+    modal.confirm(
+      'Eliminar Producto',
+      `¿Estás seguro de que deseas eliminar <strong>${item.name}</strong> del inventario?`,
+      () => {
+        db.deleteInventoryItem(id);
+        notify.success('Producto eliminado exitosamente');
+        window.app.renderCurrentModule();
+      }
+    );
+  }
+
+  showStockAdjustment(id) {
+    const item = db.getInventoryById(id);
+    if (!item) return;
+
+    const predictions = db.getInventoryPredictions(id);
+
+    const fields = [
+      { type: 'header', label: '📊 Stock Actual' },
+      {
+        name: 'currentStock',
+        label: 'Stock Actual',
+        type: 'text',
+        value: `${item.quantity} ${item.unit}`
+      },
+      {
+        name: 'minStock',
+        label: 'Stock Mínimo',
+        type: 'text',
+        value: `${item.minStock} ${item.unit}`
+      },
+
+      { type: 'header', label: '📝 Ajuste de Inventario' },
+      {
+        name: 'type',
+        label: 'Tipo de Movimiento',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'purchase', label: '📦 Compra/Entrada' },
+          { value: 'usage', label: '📉 Uso/Consumo' },
+          { value: 'adjustment', label: '🔧 Ajuste Manual' },
+          { value: 'return', label: '↩️ Devolución' },
+          { value: 'loss', label: '❌ Pérdida/Daño' }
+        ]
+      },
+      {
+        name: 'quantity',
+        label: 'Cantidad',
+        type: 'number',
+        required: true,
+        min: 1,
+        placeholder: 'Cantidad a agregar o restar'
+      },
+      {
+        name: 'reason',
+        label: 'Razón/Motivo',
+        type: 'textarea',
+        required: true,
+        placeholder: 'Describe el motivo del ajuste...'
+      }
+    ];
+
+    if (predictions) {
+      fields.push({ type: 'header', label: '📈 Sugerencias Basadas en Historial' });
+      fields.push({
+        name: 'suggestion',
+        label: 'Información',
+        type: 'textarea',
+        value: `Consumo mensual promedio: ${predictions.avgMonthlyUsage} ${item.unit}\nCantidad sugerida para reorden: ${predictions.suggestedReorderQuantity} ${item.unit}\nDías hasta reorden: ${predictions.daysUntilReorder > 0 ? predictions.daysUntilReorder : 'Reabastecer ahora'}`
+      });
+    }
+
+    modal.form(`Ajustar Stock - ${item.name}`, fields, (data) => {
+      let quantity = parseInt(data.quantity);
+
+      // If it's usage, loss, or similar, make it negative
+      if (['usage', 'loss'].includes(data.type)) {
+        quantity = -Math.abs(quantity);
+      }
+
+      const result = db.adjustInventoryStock(id, quantity, data.reason, data.type);
+
+      if (result) {
+        const action = quantity > 0 ? 'agregado' : 'reducido';
+        notify.success(`Stock ${action} exitosamente. Nuevo stock: ${result.item.quantity} ${result.item.unit}`);
+        window.app.renderCurrentModule();
+      } else {
+        notify.error('Error al ajustar el stock');
+      }
+    });
+  }
+
+  viewHistory(id) {
+    const item = db.getInventoryById(id);
+    if (!item) return;
+
+    const movements = db.getInventoryMovementsByItem(id);
+
+    const content = `
+            <div>
+                <div class="card" style="padding: 1rem; margin-bottom: 1rem; background: var(--gradient-primary); color: white;">
+                    <h4 style="margin: 0 0 0.5rem 0;">${item.name}</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        <div>
+                            <small>Stock Actual</small>
+                            <div style="font-size: 1.5rem; font-weight: bold;">${item.quantity} ${item.unit}</div>
+                        </div>
+                        <div>
+                            <small>Stock Mínimo</small>
+                            <div style="font-size: 1.5rem; font-weight: bold;">${item.minStock} ${item.unit}</div>
+                        </div>
+                        <div>
+                            <small>Precio Unitario</small>
+                            <div style="font-size: 1.5rem; font-weight: bold;">$${item.price.toFixed(2)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 style="color: var(--primary-blue); margin-bottom: 1rem;">📜 Historial de Movimientos (${movements.length})</h4>
+
+                ${movements.length === 0 ? '<p style="color: var(--text-secondary);">No hay movimientos registrados</p>' : `
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        ${movements.map(m => {
+      const isIncrease = m.quantity > 0;
+      const typeLabels = {
+        'purchase': '📦 Compra',
+        'usage': '📉 Uso',
+        'adjustment': '🔧 Ajuste',
+        'return': '↩️ Devolución',
+        'loss': '❌ Pérdida'
+      };
+
+      return `
+                                <div class="card" style="padding: 1rem; margin-bottom: 0.75rem; border-left: 4px solid ${isIncrease ? 'var(--success)' : 'var(--danger)'};">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                                        <div>
+                                            <strong>${typeLabels[m.type] || m.type}</strong>
+                                            <br>
+                                            <small style="color: var(--text-secondary);">
+                                                ${new Date(m.createdAt).toLocaleString('es-MX')}
+                                            </small>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 1.25rem; font-weight: bold; color: ${isIncrease ? 'var(--success)' : 'var(--danger)'};">
+                                                ${isIncrease ? '+' : ''}${m.quantity} ${item.unit}
+                                            </div>
+                                            <small style="color: var(--text-secondary);">
+                                                ${m.previousStock} → ${m.newStock} ${item.unit}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    ${m.reason ? `<p style="margin: 0; padding: 0.5rem; background: var(--off-white); border-radius: 4px; font-size: 0.875rem;">${m.reason}</p>` : ''}
+                                    ${m.cost > 0 ? `<div style="margin-top: 0.5rem;"><strong>Costo:</strong> $${m.cost.toFixed(2)}</div>` : ''}
+                                </div>
+                            `;
+    }).join('')}
+                    </div>
+                `}
+
+                ${this.renderMonthlyReport(id, item)}
+            </div>
+        `;
+
+    modal.create(`Historial - ${item.name}`, content, [
+      { text: 'Cerrar', class: 'btn-secondary' }
+    ]);
+  }
+
+  renderMonthlyReport(itemId, item) {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const consumption = db.getMonthlyConsumption(currentMonth, currentYear);
+    const itemConsumption = consumption[itemId];
+
+    if (!itemConsumption) {
+      return '<div style="margin-top: 1.5rem;"><p style="color: var(--text-secondary);">No hay datos de consumo para este mes</p></div>';
+    }
+
+    return `
+            <div style="margin-top: 1.5rem;">
+                <h4 style="color: var(--primary-blue); margin-bottom: 1rem;">📊 Reporte Mensual - ${now.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div class="card" style="padding: 1rem; text-align: center;">
+                        <div style="color: var(--danger); font-size: 2rem; font-weight: bold;">${itemConsumption.totalUsed}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.875rem;">Total Usado</div>
+                    </div>
+                    <div class="card" style="padding: 1rem; text-align: center;">
+                        <div style="color: var(--success); font-size: 2rem; font-weight: bold;">${itemConsumption.totalPurchased}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.875rem;">Total Comprado</div>
+                    </div>
+                    <div class="card" style="padding: 1rem; text-align: center;">
+                        <div style="color: var(--primary-blue); font-size: 2rem; font-weight: bold;">$${itemConsumption.totalCost.toFixed(2)}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.875rem;">Costo Total</div>
+                    </div>
+                </div>
+            </div>
+        `;
+  }
+}
+
+const inventoryModule = new InventoryModule();
+window.inventoryModule = inventoryModule;
+export default inventoryModule;
