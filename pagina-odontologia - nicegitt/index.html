@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Sistema de gestión para consultorios dentales - Administra pacientes, citas e inventario">
+  <meta name="keywords" content="dental, consultorio, gestión, pacientes, citas, inventario">
+  <meta name="author" content="Sistema de Gestión Dental">
+
+  <title>🦷 Sistema de Gestión Dental - Clínica Dental</title>
+
+  <!-- Favicon -->
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦷</text></svg>">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+
+<body>
+  <!-- Login Container -->
+  <div id="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-icon">🦷</div>
+        <h1>Clínica Dental</h1>
+        <p>Sistema de Gestión</p>
+      </div>
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label">Usuario</label>
+          <input type="text" id="username" class="form-input" placeholder="admin" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          Iniciar Sesión
+        </button>
+        <p style="text-align: center; margin-top: 1rem; font-size: 0.9rem;">
+          ¿No tienes una cuenta? <a href="#" id="show-register-link" style="color: var(--primary-blue);">Regístrate</a>
+        </p>
+      </form>
+
+      <!-- Registration Form (Hidden) -->
+      <form id="register-form" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Nombre Completo</label>
+          <input type="text" id="reg-name" class="form-input" placeholder="Dr. Ejemplo" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Usuario</label>
+          <input type="text" id="reg-username" class="form-input" placeholder="usuario" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <input type="password" id="reg-password" class="form-input" placeholder="••••••" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirmar Contraseña</label>
+          <input type="password" id="reg-confirm-password" class="form-input" placeholder="••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          Crear Cuenta
+        </button>
+        <p style="text-align: center; margin-top: 1rem; font-size: 0.9rem;">
+          ¿Ya tienes cuenta? <a href="#" id="show-login-link" style="color: var(--primary-blue);">Inicia Sesión</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App Container (Hidden by default) -->
+  <div id="app" style="display: none;">
+    <!-- Loading State -->
+    <div
+      style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; background: var(--off-white);">
+      <div style="font-size: 4rem; margin-bottom: 1rem; animation: pulse 1.5s ease-in-out infinite;">🦷</div>
+      <h2 style="color: var(--primary-blue); font-family: 'Poppins', sans-serif;">Cargando Sistema...</h2>
+      <p style="color: var(--text-secondary);">Por favor espera un momento</p>
+    </div>
+  </div>
+
+  <!-- Pulse Animation -->
+  <style>
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+      }
+    }
+  </style>
+
+  <!-- Application Scripts (ES6 Modules) -->
+  <script>
+    console.log('Inline script running');
+    window.testWorking = true;
+  </script>
+  <script type="module" src="./app.js?v=14"></script>
+  <script type="module" src="./database/db.js?v=7"></script>
+  <script type="module" src="./components/modal.js?v=7"></script>
+  <script type="module" src="./components/notifications.js?v=7"></script>
+  <script type="module" src="./components/calendar.js?v=7"></script>
+  <script type="module" src="./components/image-viewer.js?v=7"></script>
+  <script type="module" src="./components/timeline.js?v=7"></script>
+
+  <!-- Fallback for browsers that don't support ES6 modules -->
+  <script nomodule>
+    alert('Tu navegador no soporta módulos ES6. Por favor actualiza tu navegador para usar esta aplicación.');
+  </script>
+</body>
+
+</html>

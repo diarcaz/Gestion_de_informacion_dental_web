@@ -4,30 +4,43 @@
 
 class Modal {
     constructor() {
-        this.overlay = null;
-        this.modal = null;
-        this.onConfirm = null;
+        this.openModals = []; // Stack to track open modals
     }
 
-    create(title, content, buttons = []) {
-        // Remove existing modal if any
-        this.close();
+    create(title, content, buttons = [], options = {}) {
+        // Do NOT close existing modals. We want to stack them.
+
+        // Create context for this specific modal instance
+        const modalContext = {
+            overlay: document.createElement('div'),
+            modal: document.createElement('div'),
+            escHandler: null
+        };
 
         // Create overlay
-        this.overlay = document.createElement('div');
-        this.overlay.className = 'modal-overlay';
+        modalContext.overlay.className = 'modal-overlay';
+
+        // Adjust z-index based on stack depth to ensure stacking order
+        const baseZIndex = 2000;
+        const depth = this.openModals.length;
+        modalContext.overlay.style.zIndex = baseZIndex + (depth * 10);
 
         // Create modal
-        this.modal = document.createElement('div');
-        this.modal.className = 'modal';
+        modalContext.modal = document.createElement('div');
+        modalContext.modal.className = options.size === 'large' ? 'modal modal-large' : 'modal';
 
         // Modal header
         const header = document.createElement('div');
         header.className = 'modal-header';
         header.innerHTML = `
       <h3 class="modal-title">${title}</h3>
-      <button class="modal-close" onclick="window.modal.close()">×</button>
+      <button class="modal-close">×</button>
     `;
+
+        // Setup close button
+        // We need to capture the specific close function for THIS modal
+        const closeThisModal = () => this.close(modalContext);
+        header.querySelector('.modal-close').onclick = closeThisModal;
 
         // Modal body
         const body = document.createElement('div');
@@ -48,46 +61,76 @@ class Modal {
             button.textContent = btn.text;
             button.onclick = () => {
                 if (btn.onClick) btn.onClick();
-                if (btn.closeOnClick !== false) this.close();
+                if (btn.closeOnClick !== false) closeThisModal();
             };
             footer.appendChild(button);
         });
 
         // Assemble modal
-        this.modal.appendChild(header);
-        this.modal.appendChild(body);
+        modalContext.modal.appendChild(header);
+        modalContext.modal.appendChild(body);
         if (buttons.length > 0) {
-            this.modal.appendChild(footer);
+            modalContext.modal.appendChild(footer);
         }
 
-        this.overlay.appendChild(this.modal);
-        document.body.appendChild(this.overlay);
+        modalContext.overlay.appendChild(modalContext.modal);
+        document.body.appendChild(modalContext.overlay);
 
         // Close on overlay click
-        this.overlay.addEventListener('click', (e) => {
-            if (e.target === this.overlay) {
-                this.close();
+        modalContext.overlay.addEventListener('click', (e) => {
+            if (e.target === modalContext.overlay) {
+                closeThisModal();
             }
         });
 
         // Close on ESC key
-        this.escHandler = (e) => {
-            if (e.key === 'Escape') this.close();
+        modalContext.escHandler = (e) => {
+            // Only close if this is the top-most modal
+            if (e.key === 'Escape' && this.openModals[this.openModals.length - 1] === modalContext) {
+                closeThisModal();
+            }
         };
-        document.addEventListener('keydown', this.escHandler);
+        document.addEventListener('keydown', modalContext.escHandler);
 
-        return this;
+        // Animate in
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (modalContext.overlay) {
+                    modalContext.overlay.classList.add('active');
+                }
+            });
+        });
+
+        // Add to stack
+        this.openModals.push(modalContext);
+
+        return this; // Keep chaining if needed, though 'this' is the global manager now
     }
 
-    close() {
-        if (this.overlay && this.overlay.parentNode) {
-            this.overlay.parentNode.removeChild(this.overlay);
+    close(specificContext = null) {
+        // If specific context provided, close that one (and any above it ideally, but usually we just close top)
+        // For simplicity, we'll assume we usually close the top-most, or specific if provided.
+
+        let contextToClose = specificContext;
+
+        if (!contextToClose) {
+            // Default to closing the top-most
+            if (this.openModals.length === 0) return;
+            contextToClose = this.openModals[this.openModals.length - 1];
         }
-        if (this.escHandler) {
-            document.removeEventListener('keydown', this.escHandler);
+
+        // Remove from DOM
+        if (contextToClose.overlay && contextToClose.overlay.parentNode) {
+            contextToClose.overlay.parentNode.removeChild(contextToClose.overlay);
         }
-        this.overlay = null;
-        this.modal = null;
+
+        // Remove listener
+        if (contextToClose.escHandler) {
+            document.removeEventListener('keydown', contextToClose.escHandler);
+        }
+
+        // Remove from stack
+        this.openModals = this.openModals.filter(m => m !== contextToClose);
     }
 
     confirm(title, message, onConfirm) {
@@ -181,8 +224,12 @@ class Modal {
             formData.forEach((value, key) => {
                 data[key] = value;
             });
-            onSubmit(data);
-            this.close();
+
+            // Allow onSubmit to return false to prevent closing
+            const result = onSubmit(data);
+            if (result !== false) {
+                this.close();
+            }
         };
 
         return this.create(title, form, [
@@ -194,7 +241,12 @@ class Modal {
                 text: 'Guardar',
                 class: 'btn-primary',
                 onClick: () => {
-                    form.dispatchEvent(new Event('submit'));
+                    // Trigger HTML5 validation
+                    if (form.checkValidity()) {
+                        form.dispatchEvent(new Event('submit'));
+                    } else {
+                        form.reportValidity();
+                    }
                 },
                 closeOnClick: false
             }

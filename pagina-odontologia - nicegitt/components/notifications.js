@@ -89,4 +89,5 @@ document.head.appendChild(style);
 
 // Export notification instance
 const notify = new NotificationSystem();
+window.notify = notify;
 export default notify;

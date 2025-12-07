@@ -144,7 +144,7 @@ class InventoryModule {
                   </td>
                   <td>${item.minStock} ${item.unit}</td>
                   <td>$${item.price.toFixed(2)}</td>
-                  <td>${item.supplier}</td>
+                  <td>${item.supplier.name || item.supplier}</td>
                   <td>
                     ${isLowStock
           ? '<span class="badge badge-warning">⚠️ Stock Bajo</span>'
@@ -246,6 +246,49 @@ class InventoryModule {
     }
   }
 
+  // Refresh all sections without reloading entire module
+  refreshAllSections() {
+    // 1. Update table
+    this.updateTable();
+
+    // 2. Update statistics
+    const statsContainer = document.querySelector('.stats-grid');
+    if (statsContainer) {
+      statsContainer.outerHTML = this.renderStats();
+    }
+
+    // 3. Update low stock alert
+    const lowStockItems = db.getLowStockItems();
+    const pageHeader = document.querySelector('.page-header');
+    if (pageHeader) {
+      const existingAlert = pageHeader.nextElementSibling;
+      if (existingAlert && existingAlert.style.borderLeft) {
+        // Remove existing alert
+        existingAlert.remove();
+      }
+
+      // Add new alert if needed
+      if (lowStockItems.length > 0) {
+        const alertHTML = `
+          <div class="card mb-3" style="border-left: 4px solid var(--warning); background: #FFF9E6;">
+            <div class="flex-between">
+              <div>
+                <strong style="color: var(--warning);">⚠️ Alerta de Stock Bajo</strong>
+                <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
+                  Hay ${lowStockItems.length} producto(s) con stock bajo que requieren reabastecimiento
+                </p>
+              </div>
+              <button class="btn btn-warning btn-sm" onclick="inventoryModule.showLowStockItems()">
+                Ver Detalles
+              </button>
+            </div>
+          </div>
+        `;
+        pageHeader.insertAdjacentHTML('afterend', alertHTML);
+      }
+    }
+  }
+
   showLowStockItems() {
     const lowStockItems = db.getLowStockItems();
 
@@ -257,7 +300,7 @@ class InventoryModule {
               <div>
                 <strong style="color: var(--primary-blue);">${item.name}</strong><br>
                 <small style="color: var(--text-secondary);">
-                  Categoría: ${item.category} | Proveedor: ${item.supplier}
+                  Categoría: ${item.category} | Proveedor: ${item.supplier.name || item.supplier}
                 </small>
               </div>
               <div style="text-align: right;">
@@ -305,7 +348,7 @@ class InventoryModule {
       // If "nueva" category selected, prompt for new category name
       if (category === 'nueva') {
         const newCategory = prompt('Ingresa el nombre de la nueva categoría:');
-        if (!newCategory) return;
+        if (!newCategory) return false;
         category = newCategory;
       }
 
@@ -320,7 +363,7 @@ class InventoryModule {
       });
 
       notify.success(`Producto ${item.name} agregado exitosamente`);
-      window.app.renderCurrentModule();
+      this.refreshAllSections();
     });
   }
 
@@ -344,7 +387,7 @@ class InventoryModule {
       { name: 'minStock', label: 'Stock Mínimo', type: 'number', required: true, value: item.minStock, min: 0 },
       { name: 'unit', label: 'Unidad de Medida', type: 'text', required: true, value: item.unit },
       { name: 'price', label: 'Precio Unitario', type: 'number', required: true, value: item.price, min: 0 },
-      { name: 'supplier', label: 'Proveedor', type: 'text', required: true, value: item.supplier }
+      { name: 'supplier', label: 'Proveedor', type: 'text', required: true, value: item.supplier.name || item.supplier }
     ], (data) => {
       db.updateInventoryItem(id, {
         name: data.name,
@@ -357,7 +400,7 @@ class InventoryModule {
       });
 
       notify.success('Producto actualizado exitosamente');
-      window.app.renderCurrentModule();
+      this.refreshAllSections();
     });
   }
 
@@ -371,7 +414,7 @@ class InventoryModule {
       () => {
         db.deleteInventoryItem(id);
         notify.success('Producto eliminado exitosamente');
-        window.app.renderCurrentModule();
+        this.refreshAllSections();
       }
     );
   }
@@ -451,9 +494,10 @@ class InventoryModule {
       if (result) {
         const action = quantity > 0 ? 'agregado' : 'reducido';
         notify.success(`Stock ${action} exitosamente. Nuevo stock: ${result.item.quantity} ${result.item.unit}`);
-        window.app.renderCurrentModule();
+        this.refreshAllSections();
       } else {
         notify.error('Error al ajustar el stock');
+        return false;
       }
     });
   }

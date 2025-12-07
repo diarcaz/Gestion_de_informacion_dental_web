@@ -91,10 +91,58 @@ class AppointmentsModule {
       this.calendar.setAppointments(db.getAppointments());
       this.calendar.setOnDateSelect((date) => {
         this.selectedDate = date;
-        window.app.renderCurrentModule();
+        this.updateAppointmentsList(date);
       });
       window.calendar = this.calendar; // Make it globally accessible
     }, 100);
+  }
+
+  // Update appointments list without reloading entire module
+  updateAppointmentsList(date) {
+    const appointments = db.getAppointmentsByDate(date);
+    const displayDate = this.formatLocalDate(date);
+
+    // Update the title
+    const titleElement = document.querySelector('.card-title');
+    if (titleElement && titleElement.textContent.includes('Citas -')) {
+      titleElement.textContent = `Citas - ${displayDate}`;
+    }
+
+    // Update the appointments list
+    const cardBody = document.querySelector('.card-body');
+    if (cardBody) {
+      cardBody.innerHTML = appointments.length === 0
+        ? this.renderEmptyState()
+        : this.renderAppointmentsList(appointments);
+    }
+  }
+
+  // Update all appointments sections without reloading module
+  refreshAllSections() {
+    // Update calendar
+    if (this.calendar) {
+      this.calendar.setAppointments(db.getAppointments());
+    }
+
+    // Update appointments list for selected date
+    const currentDate = this.selectedDate || new Date().toISOString().split('T')[0];
+    this.updateAppointmentsList(currentDate);
+
+    // Update all appointments table
+    const tableParent = document.querySelector('.card:last-child .card-body, .card:last-child > div:last-child');
+    if (!tableParent) {
+      // Try alternative selector
+      const allCards = document.querySelectorAll('.card');
+      const lastCard = allCards[allCards.length - 1];
+      if (lastCard) {
+        const container = lastCard.querySelector('.table-container')?.parentElement || lastCard.querySelector('.empty-state')?.parentElement;
+        if (container) {
+          container.innerHTML = this.renderAllAppointmentsTable();
+        }
+      }
+    } else {
+      tableParent.innerHTML = this.renderAllAppointmentsTable();
+    }
   }
 
   renderEmptyState() {
@@ -259,7 +307,7 @@ class AppointmentsModule {
       // Check if time slot is available
       if (!db.isTimeSlotAvailable(data.date, data.time)) {
         notify.error('Ya existe una cita en este horario');
-        return;
+        return false;
       }
 
       const patient = db.getPatientById(data.patientId);
@@ -274,7 +322,7 @@ class AppointmentsModule {
       });
 
       notify.success('Cita agregada exitosamente');
-      window.app.renderCurrentModule();
+      this.refreshAllSections();
     });
   }
 
@@ -314,7 +362,7 @@ class AppointmentsModule {
       // Check if time slot is available (excluding current appointment)
       if (!db.isTimeSlotAvailable(data.date, data.time, id)) {
         notify.error('Ya existe una cita en este horario');
-        return;
+        return false;
       }
 
       const patient = db.getPatientById(data.patientId);
@@ -329,7 +377,7 @@ class AppointmentsModule {
       });
 
       notify.success('Cita actualizada exitosamente');
-      window.app.renderCurrentModule();
+      this.refreshAllSections();
     });
   }
 
@@ -343,7 +391,7 @@ class AppointmentsModule {
       () => {
         db.deleteAppointment(id);
         notify.success('Cita eliminada exitosamente');
-        window.app.renderCurrentModule();
+        this.refreshAllSections();
       }
     );
   }

@@ -47,9 +47,105 @@ class Database {
     return data ? JSON.parse(data) : null;
   }
 
-  // Save all data
+  // Save all data with size verification
   saveData(data) {
-    localStorage.setItem(this.storageKey, JSON.stringify(data));
+    try {
+      const dataStr = JSON.stringify(data);
+      const sizeInBytes = new Blob([dataStr]).size;
+      const sizeInMB = sizeInBytes / (1024 * 1024);
+
+      // Warn if approaching localStorage limit (5-10MB depending on browser)
+      if (sizeInMB > 7) {
+        console.warn(`⚠️ Database size: ${sizeInMB.toFixed(2)}MB - Approaching storage limit!`);
+        // Show warning to user if notify is available
+        if (window.notify) {
+          window.notify.warning(`Base de datos: ${sizeInMB.toFixed(2)}MB. Considera hacer backup y limpiar datos antiguos.`);
+        }
+      }
+
+      if (sizeInMB > 9) {
+        console.error(`❌ Database size: ${sizeInMB.toFixed(2)}MB - Too large!`);
+        if (window.notify) {
+          window.notify.error('Espacio de almacenamiento casi lleno. Haz backup urgente y elimina datos antiguos.');
+        }
+        throw new Error('Database size exceeds safe limit');
+      }
+
+      localStorage.setItem(this.storageKey, dataStr);
+
+      // Check if auto-backup is needed
+      this.checkAutoBackup();
+
+    } catch (e) {
+      if (e.name === 'QuotaExceededError') {
+        console.error('❌ localStorage quota exceeded!');
+        if (window.notify) {
+          window.notify.error('Espacio de almacenamiento lleno. Elimina datos o haz backup.');
+        }
+      }
+      throw e;
+    }
+  }
+
+  // Check and perform auto-backup if needed
+  checkAutoBackup() {
+    try {
+      const lastBackup = localStorage.getItem('lastAutoBackup');
+      const now = Date.now();
+      const ONE_DAY = 24 * 60 * 60 * 1000;
+
+      if (!lastBackup || (now - parseInt(lastBackup)) > ONE_DAY) {
+        console.log('📦 Performing auto-backup...');
+        this.autoBackup();
+        localStorage.setItem('lastAutoBackup', now.toString());
+      }
+    } catch (e) {
+      console.error('Auto-backup check failed:', e);
+    }
+  }
+
+  // Automatic backup to download
+  autoBackup() {
+    try {
+      const data = this.getData();
+      const dataStr = JSON.stringify(data, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `dental-auto-backup-${new Date().toISOString().split('T')[0]}.json`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      if (window.notify) {
+        window.notify.success('Backup automático creado exitosamente');
+      }
+    } catch (e) {
+      console.error('Auto-backup failed:', e);
+    }
+  }
+
+  // Get database size info
+  getDatabaseSize() {
+    try {
+      const data = this.getData();
+      const dataStr = JSON.stringify(data);
+      const sizeInBytes = new Blob([dataStr]).size;
+      const sizeInMB = sizeInBytes / (1024 * 1024);
+
+      return {
+        bytes: sizeInBytes,
+        mb: parseFloat(sizeInMB.toFixed(2)),
+        percentage: parseFloat(((sizeInMB / 10) * 100).toFixed(1)), // Assuming 10MB limit
+        isNearLimit: sizeInMB > 7,
+        isCritical: sizeInMB > 9
+      };
+    } catch (e) {
+      return null;
+    }
   }
 
   // ========== PATIENTS ==========
@@ -461,6 +557,314 @@ class Database {
   clearData() {
     localStorage.removeItem(this.storageKey);
     this.loadDefaultData();
+  }
+
+  // ========== PATIENT TREATMENTS ==========
+
+  addTreatment(patientId, treatment) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return null;
+
+    if (!data.patients[patientIndex].treatments) {
+      data.patients[patientIndex].treatments = [];
+    }
+
+    const newTreatment = {
+      id: this.generateId('T'),
+      ...treatment,
+      createdAt: new Date().toISOString()
+    };
+
+    data.patients[patientIndex].treatments.push(newTreatment);
+    this.saveData(data);
+    return newTreatment;
+  }
+
+  getTreatments(patientId) {
+    const patient = this.getPatientById(patientId);
+    return patient?.treatments || [];
+  }
+
+  updateTreatment(patientId, treatmentId, updates) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return null;
+
+    const treatments = data.patients[patientIndex].treatments || [];
+    const treatmentIndex = treatments.findIndex(t => t.id === treatmentId);
+
+    if (treatmentIndex !== -1) {
+      treatments[treatmentIndex] = { ...treatments[treatmentIndex], ...updates };
+      data.patients[patientIndex].treatments = treatments;
+      this.saveData(data);
+      return treatments[treatmentIndex];
+    }
+
+    return null;
+  }
+
+  deleteTreatment(patientId, treatmentId) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return false;
+
+    if (data.patients[patientIndex].treatments) {
+      data.patients[patientIndex].treatments = data.patients[patientIndex].treatments.filter(
+        t => t.id !== treatmentId
+      );
+      this.saveData(data);
+      return true;
+    }
+
+    return false;
+  }
+
+  updateTreatmentStatus(patientId, treatmentId, isPaid) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return null;
+
+    const treatments = data.patients[patientIndex].treatments || [];
+    const treatmentIndex = treatments.findIndex(t => t.id === treatmentId);
+
+    if (treatmentIndex !== -1) {
+      treatments[treatmentIndex].paid = isPaid;
+      data.patients[patientIndex].treatments = treatments;
+      this.saveData(data);
+      return treatments[treatmentIndex];
+    }
+    return null;
+  }
+
+  // ========== PATIENT DOCUMENTS ==========
+
+  addDocument(patientId, document) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return null;
+
+    if (!data.patients[patientIndex].documents) {
+      data.patients[patientIndex].documents = [];
+    }
+
+    const newDocument = {
+      id: this.generateId('D'),
+      ...document,
+      uploadDate: new Date().toISOString()
+    };
+
+    data.patients[patientIndex].documents.push(newDocument);
+    this.saveData(data);
+    return newDocument;
+  }
+
+  getDocuments(patientId) {
+    const patient = this.getPatientById(patientId);
+    return patient?.documents || [];
+  }
+
+  deleteDocument(patientId, documentId) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return false;
+
+    if (data.patients[patientIndex].documents) {
+      data.patients[patientIndex].documents = data.patients[patientIndex].documents.filter(
+        d => d.id !== documentId
+      );
+      this.saveData(data);
+      return true;
+    }
+
+    return false;
+  }
+
+  // ========== PATIENT PHOTO ==========
+
+  updatePatientPhoto(patientId, photoBase64) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return null;
+
+    data.patients[patientIndex].photo = photoBase64;
+    this.saveData(data);
+    return data.patients[patientIndex];
+  }
+
+  // ========== PATIENT TAGS ==========
+
+  addPatientTag(patientId, tag) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return null;
+
+    if (!data.patients[patientIndex].tags) {
+      data.patients[patientIndex].tags = [];
+    }
+
+    if (!data.patients[patientIndex].tags.includes(tag)) {
+      data.patients[patientIndex].tags.push(tag);
+      this.saveData(data);
+    }
+
+    return data.patients[patientIndex];
+  }
+
+  removePatientTag(patientId, tag) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return null;
+
+    if (data.patients[patientIndex].tags) {
+      data.patients[patientIndex].tags = data.patients[patientIndex].tags.filter(t => t !== tag);
+      this.saveData(data);
+    }
+
+    return data.patients[patientIndex];
+  }
+
+  getPatientsByTag(tag) {
+    const patients = this.getPatients();
+    return patients.filter(p => p.tags && p.tags.includes(tag));
+  }
+
+  // ========== PRIVATE NOTES ==========
+
+  updatePrivateNotes(patientId, notes) {
+    const data = this.getData();
+    const patientIndex = data.patients.findIndex(p => p.id === patientId);
+
+    if (patientIndex === -1) return null;
+
+    data.patients[patientIndex].privateNotes = notes;
+    this.saveData(data);
+    return data.patients[patientIndex];
+  }
+
+  // ========== DATA MIGRATION ==========
+
+  migrateData() {
+    const data = this.getData();
+    let migrated = false;
+
+    // Migrate patients
+    if (data.patients) {
+      data.patients = data.patients.map(patient => {
+        const updated = { ...patient };
+
+        if (!updated.photo) {
+          updated.photo = null;
+          migrated = true;
+        }
+
+        if (!updated.documents) {
+          updated.documents = [];
+          migrated = true;
+        }
+
+        if (!updated.treatments) {
+          updated.treatments = [];
+          migrated = true;
+        }
+
+        if (!updated.privateNotes) {
+          updated.privateNotes = '';
+          migrated = true;
+        }
+
+        if (!updated.tags) {
+          updated.tags = [];
+          migrated = true;
+        }
+
+        return updated;
+      });
+    }
+
+    // Migrate appointments
+    if (data.appointments) {
+      data.appointments = data.appointments.map(apt => {
+        const updated = { ...apt };
+
+        if (!updated.duration) {
+          updated.duration = 30;
+          migrated = true;
+        }
+
+        if (!updated.color) {
+          updated.color = '#0077BE';
+          migrated = true;
+        }
+
+        if (!updated.room) {
+          updated.room = 'Sala 1';
+          migrated = true;
+        }
+
+        if (!updated.treatmentType) {
+          updated.treatmentType = 'General';
+          migrated = true;
+        }
+
+        return updated;
+      });
+    }
+
+    // Migrate inventory
+    if (data.inventory) {
+      data.inventory = data.inventory.map(item => {
+        const updated = { ...item };
+
+        if (!updated.sku) {
+          updated.sku = `SKU-${item.id}`;
+          migrated = true;
+        }
+
+        if (typeof updated.supplier === 'string') {
+          updated.supplier = {
+            name: updated.supplier,
+            contact: '',
+            email: '',
+            address: ''
+          };
+          migrated = true;
+        }
+
+        if (!updated.priceHistory) {
+          updated.priceHistory = [];
+          migrated = true;
+        }
+
+        if (!updated.expirationDate) {
+          updated.expirationDate = null;
+          migrated = true;
+        }
+
+        if (!updated.purchaseOrders) {
+          updated.purchaseOrders = [];
+          migrated = true;
+        }
+
+        return updated;
+      });
+    }
+
+    if (migrated) {
+      this.saveData(data);
+      console.log('Data migrated successfully');
+    }
+
+    return migrated;
   }
 }
 

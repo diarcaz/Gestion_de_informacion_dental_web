@@ -1,0 +1,32 @@
+# Backups automáticos
+*-backup-*.json
+dental-auto-backup-*.json
+
+# Archivos temporales
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
+
+# Archivos de desarrollo
+*.backup
+app-minimal.js
+app-test.js
+*.backup.html
+*.backup.css
+index.html.backup
+
+# Node modules (si usas npm en el futuro)
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
